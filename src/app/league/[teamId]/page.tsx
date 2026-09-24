@@ -3,9 +3,11 @@ import Link from "next/link";
 import { requirePageUser } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 import { getLatestScoredGameweek } from "@/lib/gameweek";
-import { Card, Badge } from "@/components/ui";
+import { Card } from "@/components/ui";
 import GameweekHistory from "@/components/GameweekHistory";
 import PitchView from "@/components/PitchView";
+import SquadList from "./SquadList";
+import type { ScoringBreakdown } from "@/lib/scoring";
 
 interface PlayerBreakdownEntry {
   playerId: string;
@@ -50,6 +52,19 @@ export default async function TeamDetailPage({
   const breakdown = (gwPointsRow?.breakdown as unknown as PlayerBreakdownEntry[]) ?? [];
   const breakdownByPlayer = new Map(breakdown.map((b) => [b.playerId, b]));
 
+  const squadPlayerIds = squad
+    ? squad.players.map((sp) => sp.playerId)
+    : team.currentPlayers.map((sp) => sp.playerId);
+  const scoringBreakdownRows =
+    latestGameweek && squadPlayerIds.length > 0
+      ? await prisma.fantasyPlayerPoints.findMany({
+          where: { gameweekId: latestGameweek.id, playerId: { in: squadPlayerIds } },
+        })
+      : [];
+  const scoringBreakdownByPlayer = new Map(
+    scoringBreakdownRows.map((r) => [r.playerId, r.breakdown as unknown as ScoringBreakdown]),
+  );
+
   const totalPoints = team.gameweekPoints.reduce((sum, gp) => sum + gp.points, 0);
 
   const POSITION_ORDER = { DEF: 0, MID: 1, FWD: 2 } as const;
@@ -62,6 +77,9 @@ export default async function TeamDetailPage({
           position: sp.positionAtTime,
           isCaptain: sp.isCaptain,
           points: breakdownByPlayer.get(sp.playerId)?.finalPoints ?? 0,
+          basePoints: breakdownByPlayer.get(sp.playerId)?.basePoints ?? 0,
+          multiplier: breakdownByPlayer.get(sp.playerId)?.multiplier ?? 1,
+          breakdown: scoringBreakdownByPlayer.get(sp.playerId),
         }))
       : team.currentPlayers.map((sp) => ({
           id: sp.playerId,
@@ -69,6 +87,9 @@ export default async function TeamDetailPage({
           position: sp.player.position,
           isCaptain: sp.isCaptain,
           points: breakdownByPlayer.get(sp.playerId)?.finalPoints ?? 0,
+          basePoints: breakdownByPlayer.get(sp.playerId)?.basePoints ?? 0,
+          multiplier: breakdownByPlayer.get(sp.playerId)?.multiplier ?? 1,
+          breakdown: scoringBreakdownByPlayer.get(sp.playerId),
         }))
   ).sort((a, b) => POSITION_ORDER[a.position] - POSITION_ORDER[b.position]);
 
@@ -107,23 +128,7 @@ export default async function TeamDetailPage({
         {displayPlayers.length === 0 ? (
           <p className="text-sm text-muted">This team hasn&apos;t been built yet.</p>
         ) : (
-          <div className="flex flex-col gap-1.5">
-            {displayPlayers.map((p) => (
-              <div
-                key={p.id}
-                className="flex items-center justify-between rounded-lg border border-card-border px-3 py-2 text-sm"
-              >
-                <div className="flex items-center gap-2">
-                  <span>
-                    {p.name}
-                    {p.isCaptain && <span className="ml-1 text-gold">(C)</span>}
-                  </span>
-                  <Badge tone="muted">{p.position}</Badge>
-                </div>
-                <span className="font-semibold">{p.points} pts</span>
-              </div>
-            ))}
-          </div>
+          <SquadList players={displayPlayers} />
         )}
       </Card>
 

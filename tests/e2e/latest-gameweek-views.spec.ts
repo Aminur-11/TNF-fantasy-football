@@ -55,6 +55,16 @@ async function createGameweek(page: Page, number: number) {
   ).toBeVisible();
 }
 
+const BREAKDOWN_LABELS: Record<string, string> = {
+  appearance: "Appearance",
+  goals: "Goals",
+  assists: "Assists",
+  motm: "MOTM",
+  result: "Result",
+  goalsConceded: "Conceded",
+  bonus: "Bonus",
+};
+
 async function readStoredResults(teamName: string, gwNumber: number, captainName: string) {
   const prisma = new PrismaClient();
   try {
@@ -63,10 +73,22 @@ async function readStoredResults(teamName: string, gwNumber: number, captainName
       include: { gameweekPoints: { include: { gameweek: true } } },
     });
     const gwRow = team.gameweekPoints.find((gp) => gp.gameweek.number === gwNumber);
+    const gameweek = await prisma.gameweek.findFirstOrThrow({ where: { number: gwNumber } });
     const captain = await prisma.player.findFirstOrThrow({ where: { name: captainName } });
-    const breakdown = gwRow?.breakdown as unknown as { playerId: string; finalPoints: number }[] | undefined;
-    const captainPoints = breakdown?.find((b) => b.playerId === captain.id)?.finalPoints ?? 0;
-    return { teamPoints: gwRow?.points ?? 0, captainPoints };
+    const teamBreakdown = gwRow?.breakdown as unknown as
+      | { playerId: string; basePoints: number; multiplier: number; finalPoints: number }[]
+      | undefined;
+    const captainTeamEntry = teamBreakdown?.find((b) => b.playerId === captain.id);
+    const captainPointsRow = await prisma.fantasyPlayerPoints.findFirst({
+      where: { gameweekId: gameweek.id, playerId: captain.id },
+    });
+    return {
+      teamPoints: gwRow?.points ?? 0,
+      captainPoints: captainTeamEntry?.finalPoints ?? 0,
+      captainBasePoints: captainTeamEntry?.basePoints ?? 0,
+      captainMultiplier: captainTeamEntry?.multiplier ?? 1,
+      captainScoringBreakdown: captainPointsRow?.breakdown as unknown as Record<string, number> | undefined,
+    };
   } finally {
     await prisma.$disconnect();
   }
@@ -163,5 +185,39 @@ test.describe.serial("League table and team detail show the latest scored gamewe
     // names are truncated to their last word there, so a specific player
     // isn't uniquely addressable — this just confirms the feature renders).
     await expect(page.getByText(/^\d+ pts$/).first()).toBeVisible();
+  });
+
+  test("clicking a player expands a breakdown of how they scored their points", async ({ page }) => {
+    const { captainBasePoints, captainMultiplier, captainScoringBreakdown } = await readStoredResults(
+      teamName,
+      gwNumber,
+      "E2E Fwd One",
+    );
+    expect(captainScoringBreakdown).toBeTruthy();
+
+    await loginAsManager(page, managerUsername);
+    await page.goto("/league");
+    await page.getByText(teamName).click();
+
+    const captainRow = page.locator(".rounded-lg.border", { hasText: "E2E Fwd One" });
+    // Collapsed by default: no breakdown line visible yet.
+    await expect(captainRow.getByText("Goals")).not.toBeVisible();
+
+    await captainRow.getByRole("button").click();
+
+    for (const [key, value] of Object.entries(captainScoringBreakdown!)) {
+      if (value === 0) continue;
+      const label = BREAKDOWN_LABELS[key];
+      const line = captainRow.locator("div", { hasText: label }).last();
+      await expect(line).toContainText(value > 0 ? `+${value}` : String(value));
+    }
+    await expect(captainRow.getByText(`Base ${captainBasePoints}`)).toBeVisible();
+    if (captainMultiplier > 1) {
+      await expect(captainRow.getByText(`× ${captainMultiplier} (C)`)).toBeVisible();
+    }
+
+    // Collapses back on a second click.
+    await captainRow.getByRole("button").click();
+    await expect(captainRow.getByText("Goals")).not.toBeVisible();
   });
 });
