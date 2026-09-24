@@ -61,7 +61,7 @@ const BREAKDOWN_LABELS: Record<string, string> = {
   assists: "Assists",
   motm: "MOTM",
   result: "Result",
-  goalsConceded: "Conceded",
+  goalsConceded: "Clean Sheet",
   bonus: "Bonus",
 };
 

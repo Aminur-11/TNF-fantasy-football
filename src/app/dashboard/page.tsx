@@ -162,7 +162,7 @@ export default async function DashboardPage() {
                 <th className="py-2 px-2 text-right">Assists</th>
                 <th className="py-2 px-2 text-right">MOTM</th>
                 <th className="py-2 px-2 text-right">Result</th>
-                <th className="py-2 px-2 text-right">Conceded</th>
+                <th className="py-2 px-2 text-right">Clean Sheet</th>
                 <th className="py-2 px-2 text-right">Bonus</th>
                 <th className="py-2 px-2 text-right">Base</th>
                 <th className="py-2 px-2 text-right">Captain</th>

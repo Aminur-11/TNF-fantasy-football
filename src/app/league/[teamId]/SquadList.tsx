@@ -21,7 +21,7 @@ const BREAKDOWN_LABELS: Record<keyof ScoringBreakdown, string> = {
   assists: "Assists",
   motm: "MOTM",
   result: "Result",
-  goalsConceded: "Conceded",
+  goalsConceded: "Clean Sheet",
   bonus: "Bonus",
 };
 

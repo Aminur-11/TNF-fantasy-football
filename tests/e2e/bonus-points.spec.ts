@@ -122,7 +122,7 @@ test.describe.serial("Discretionary bonus points", () => {
     const fwdRow = table.locator("tr", { hasText: "E2E Fwd One" });
     const midRow = table.locator("tr", { hasText: "E2E Mid One" });
 
-    // Bonus is the 6th data column (Player, App, Goals, Assists, MOTM, Result, Conceded, Bonus, ...).
+    // Bonus is the 6th data column (Player, App, Goals, Assists, MOTM, Result, Clean Sheet, Bonus, ...).
     await expect(fwdRow.locator("td").nth(7)).toHaveText("3");
     await expect(midRow.locator("td").nth(7)).toHaveText("-2");
   });
