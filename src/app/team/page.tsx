@@ -1,25 +1,37 @@
 import { requirePageUser } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 import { getBudget } from "@/lib/league-settings";
-import { getCurrentGameweek, isEditable } from "@/lib/gameweek";
+import { getCurrentGameweek, getLatestScoredGameweek, isEditable } from "@/lib/gameweek";
 import TeamBuilder from "./TeamBuilder";
 import type { Position } from "@/lib/scoring";
 
 export default async function TeamPage() {
   const user = await requirePageUser();
 
-  const [players, fantasyTeam, budget, currentGameweek] = await Promise.all([
-    prisma.player.findMany({
-      where: { active: true },
-      orderBy: [{ position: "asc" }, { name: "asc" }],
-    }),
-    prisma.fantasyTeam.findUnique({
-      where: { managerId: user.id },
-      include: { currentPlayers: true },
-    }),
-    getBudget(),
-    getCurrentGameweek(),
-  ]);
+  const [players, fantasyTeam, budget, currentGameweek, latestScoredGameweek, totalPointsRows] =
+    await Promise.all([
+      prisma.player.findMany({
+        where: { active: true },
+        orderBy: [{ position: "asc" }, { name: "asc" }],
+      }),
+      prisma.fantasyTeam.findUnique({
+        where: { managerId: user.id },
+        include: { currentPlayers: true },
+      }),
+      getBudget(),
+      getCurrentGameweek(),
+      getLatestScoredGameweek(),
+      prisma.fantasyPlayerPoints.groupBy({ by: ["playerId"], _sum: { basePoints: true } }),
+    ]);
+
+  const latestGwRows = latestScoredGameweek
+    ? await prisma.fantasyPlayerPoints.findMany({
+        where: { gameweekId: latestScoredGameweek.id },
+        select: { playerId: true, basePoints: true },
+      })
+    : [];
+  const totalByPlayer = new Map(totalPointsRows.map((r) => [r.playerId, r._sum.basePoints ?? 0]));
+  const latestGwByPlayer = new Map(latestGwRows.map((r) => [r.playerId, r.basePoints]));
 
   const editable = isEditable(currentGameweek);
   const deadlineMessage = currentGameweek
@@ -34,6 +46,8 @@ export default async function TeamPage() {
     name: p.name,
     position: p.position as Position,
     price: Number(p.price),
+    latestGwPoints: latestGwByPlayer.get(p.id) ?? 0,
+    totalPoints: totalByPlayer.get(p.id) ?? 0,
   }));
 
   return (

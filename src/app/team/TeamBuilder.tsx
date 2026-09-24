@@ -20,6 +20,8 @@ export interface BuilderPlayer {
   name: string;
   position: Position;
   price: number;
+  latestGwPoints: number;
+  totalPoints: number;
 }
 
 const POSITIONS: Position[] = ["DEF", "MID", "FWD"];
@@ -180,6 +182,14 @@ export default function TeamBuilder({
           ))}
         </div>
 
+        <div className="flex items-center gap-3 px-3 text-[10px] font-semibold uppercase tracking-wide text-muted">
+          <span className="w-5 shrink-0" aria-hidden="true" />
+          <span className="flex-1">Player</span>
+          <span className="w-12 shrink-0 text-right">Price</span>
+          <span className="w-8 shrink-0 text-right">GW</span>
+          <span className="w-10 shrink-0 text-right">Total</span>
+        </div>
+
         <div className="flex flex-col gap-2">
           {POSITIONS.filter((pos) => filter === "ALL" || filter === pos).map((pos) => (
             <div key={pos}>
@@ -210,8 +220,14 @@ export default function TeamBuilder({
                           disabled={disabled}
                           className="h-5 w-5 accent-[var(--pitch)]"
                         />
-                        <span className="flex-1">{p.name}</span>
-                        <span className="text-sm text-muted">£{p.price.toFixed(1)}m</span>
+                        <span className="flex-1 truncate">{p.name}</span>
+                        <span className="w-12 shrink-0 text-right text-sm text-muted">
+                          £{p.price.toFixed(1)}m
+                        </span>
+                        <span className="w-8 shrink-0 text-right text-sm">{p.latestGwPoints}</span>
+                        <span className="w-10 shrink-0 text-right text-sm font-semibold">
+                          {p.totalPoints}
+                        </span>
                       </label>
                     );
                   })}
