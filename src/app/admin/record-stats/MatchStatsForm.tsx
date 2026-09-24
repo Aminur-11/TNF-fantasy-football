@@ -25,6 +25,7 @@ interface PlayerStatLine {
   goals: number;
   assists: number;
   motm: boolean;
+  bonusPoints: number;
 }
 
 export interface FormPlayer {
@@ -98,7 +99,15 @@ export default function MatchStatsForm({
   function assign(playerId: string, teamSide: TeamSide) {
     setLines((prev) => {
       const next = new Map(prev);
-      next.set(playerId, { playerId, teamSide, appearance: true, goals: 0, assists: 0, motm: false });
+      next.set(playerId, {
+        playerId,
+        teamSide,
+        appearance: true,
+        goals: 0,
+        assists: 0,
+        motm: false,
+        bonusPoints: 0,
+      });
       return next;
     });
   }
@@ -131,6 +140,21 @@ export default function MatchStatsForm({
       if (!line) return prev;
       const next = new Map(prev);
       next.set(playerId, { ...line, [field]: Math.max(0, line[field] + delta) });
+      return next;
+    });
+  }
+
+  // Bonus points are discretionary and can go negative (a deduction), unlike
+  // goals/assists — clamped to the same [-20, 20] range the server enforces.
+  function bumpBonus(playerId: string, delta: number) {
+    setLines((prev) => {
+      const line = prev.get(playerId);
+      if (!line) return prev;
+      const next = new Map(prev);
+      next.set(playerId, {
+        ...line,
+        bonusPoints: Math.min(20, Math.max(-20, line.bonusPoints + delta)),
+      });
       return next;
     });
   }
@@ -236,6 +260,7 @@ export default function MatchStatsForm({
                   onMotm={(v) => setMotm(line.playerId, v)}
                   onRemove={() => unassign(line.playerId)}
                   onBump={(field, delta) => bumpStat(line.playerId, field, delta)}
+                  onBumpBonus={(delta) => bumpBonus(line.playerId, delta)}
                 />
               ))}
             </div>
@@ -358,6 +383,7 @@ function PlayerStatRow({
   onMotm,
   onRemove,
   onBump,
+  onBumpBonus,
 }: {
   name: string;
   line: PlayerStatLine;
@@ -366,6 +392,7 @@ function PlayerStatRow({
   onMotm: (v: boolean) => void;
   onRemove: () => void;
   onBump: (field: "goals" | "assists", delta: number) => void;
+  onBumpBonus: (delta: number) => void;
 }) {
   return (
     <div className="rounded-lg border border-card-border p-3">
@@ -412,6 +439,15 @@ function PlayerStatRow({
           />
           MOTM
         </label>
+        <Counter
+          label="Bonus"
+          value={line.bonusPoints}
+          disabled={disabled}
+          min={-20}
+          max={20}
+          onIncrement={() => onBumpBonus(1)}
+          onDecrement={() => onBumpBonus(-1)}
+        />
       </div>
     </div>
   );
@@ -423,30 +459,38 @@ function Counter({
   disabled,
   onIncrement,
   onDecrement,
+  min = 0,
+  max,
 }: {
   label: string;
   value: number;
   disabled: boolean;
   onIncrement: () => void;
   onDecrement: () => void;
+  min?: number;
+  max?: number;
 }) {
   return (
     <div className="flex items-center gap-2 text-sm">
       <span>{label}</span>
       <button
         type="button"
-        disabled={disabled || value <= 0}
+        disabled={disabled || value <= min}
         onClick={onDecrement}
         className="flex h-8 w-8 items-center justify-center rounded-full border border-card-border font-bold disabled:opacity-40"
       >
         −
       </button>
-      <span className="w-5 text-center font-semibold">{value}</span>
+      <span
+        className={`w-6 text-center font-semibold ${value < 0 ? "text-danger" : value > 0 && min < 0 ? "text-pitch-dark dark:text-pitch" : ""}`}
+      >
+        {value > 0 && min < 0 ? `+${value}` : value}
+      </span>
       <button
         type="button"
-        disabled={disabled}
+        disabled={disabled || (max !== undefined && value >= max)}
         onClick={onIncrement}
-        className="flex h-8 w-8 items-center justify-center rounded-full border border-card-border font-bold"
+        className="flex h-8 w-8 items-center justify-center rounded-full border border-card-border font-bold disabled:opacity-40"
       >
         +
       </button>

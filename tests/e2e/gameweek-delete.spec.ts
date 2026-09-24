@@ -61,6 +61,11 @@ test.describe.serial("Gameweek deletion", () => {
     // Record a minimal match for it (default team names, 0-0, no stats).
     await page.goto("/admin/record-stats");
     await page.locator("select").selectOption({ label: `Gameweek ${number} (OPEN)` });
+    // Selecting a gameweek triggers a client navigation the server follows
+    // up with a redirect to append an explicit `match` param — wait for it
+    // to settle before interacting with the (possibly remounted) form.
+    await page.waitForURL(/match=/);
+    await page.waitForLoadState("networkidle");
     await page.getByRole("button", { name: "Save stats" }).click();
     await expect(page.getByText("Stats saved")).toBeVisible();
 

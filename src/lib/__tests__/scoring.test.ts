@@ -54,6 +54,7 @@ function baseInput(overrides: Partial<PlayerScoringInput>): PlayerScoringInput {
     goalsConceded: 0,
     result: "LOSS",
     isCaptain: false,
+    bonusPoints: 0,
     ...overrides,
   };
 }
@@ -73,6 +74,7 @@ describe("calculatePlayerPoints — appearance", () => {
         motm: true,
         result: "WIN",
         isCaptain: true,
+        bonusPoints: 10,
       }),
       INITIAL_RULES,
     );
@@ -85,6 +87,7 @@ describe("calculatePlayerPoints — appearance", () => {
       motm: 0,
       goalsConceded: 0,
       result: 0,
+      bonus: 0,
     });
   });
 });
@@ -212,9 +215,50 @@ describe("calculatePlayerPoints — combined example from spec", () => {
       motm: 5,
       goalsConceded: 5,
       result: 3,
+      bonus: 0,
     });
     expect(r.basePoints).toBe(26);
     expect(r.finalPoints).toBe(52);
+  });
+});
+
+describe("calculatePlayerPoints — discretionary bonus points", () => {
+  it("adds a positive bonus to base points", () => {
+    const r = calculatePlayerPoints(baseInput({ bonusPoints: 3 }), INITIAL_RULES);
+    expect(r.breakdown.bonus).toBe(3);
+    // appearance 2 + conceded bonus 5 (0 < 5 threshold) + bonus 3 = 10
+    expect(r.basePoints).toBe(10);
+  });
+
+  it("allows a negative bonus (a deduction)", () => {
+    const r = calculatePlayerPoints(baseInput({ bonusPoints: -2 }), INITIAL_RULES);
+    expect(r.breakdown.bonus).toBe(-2);
+    // appearance 2 + conceded bonus 5 - 2 = 5
+    expect(r.basePoints).toBe(5);
+  });
+
+  it("is doubled for the captain like every other component", () => {
+    const r = calculatePlayerPoints(
+      baseInput({ bonusPoints: 4, isCaptain: true }),
+      INITIAL_RULES,
+    );
+    // appearance 2 + conceded bonus 5 + bonus 4 = 11
+    expect(r.basePoints).toBe(11);
+    expect(r.finalPoints).toBe(22);
+  });
+
+  it("is zeroed out for a non-appearance like every other component", () => {
+    const r = calculatePlayerPoints(
+      baseInput({ appearance: false, bonusPoints: 10 }),
+      INITIAL_RULES,
+    );
+    expect(r.breakdown.bonus).toBe(0);
+    expect(r.basePoints).toBe(0);
+  });
+
+  it("rejects bonus points outside [-20, 20]", () => {
+    expect(() => calculatePlayerPoints(baseInput({ bonusPoints: 21 }), INITIAL_RULES)).toThrow();
+    expect(() => calculatePlayerPoints(baseInput({ bonusPoints: -21 }), INITIAL_RULES)).toThrow();
   });
 });
 

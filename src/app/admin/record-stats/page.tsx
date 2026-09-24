@@ -108,6 +108,7 @@ export default async function RecordStatsPage({
                   goals: s.goals,
                   assists: s.assists,
                   motm: s.motm,
+                  bonusPoints: s.bonusPoints,
                 })),
               }
             : null

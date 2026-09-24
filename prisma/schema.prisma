@@ -292,6 +292,11 @@ model PlayerMatchStat {
   assists    Int     @default(0)
   motm       Boolean @default(false)
 
+  // Discretionary points an admin awards (or deducts) by hand at stat-entry
+  // time, for things the formula can't capture. Applied as-is, independent
+  // of position, and only counted if the player appeared (see scoring.ts).
+  bonusPoints Int @default(0)
+
   // Frozen at the moment stats are recorded, taken from Player.position at
   // that instant. Guarantees a later position change on Player never rewrites
   // this match's scoring (see CLAUDE.md "Historical position/price").

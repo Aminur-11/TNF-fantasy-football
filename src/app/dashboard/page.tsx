@@ -163,6 +163,7 @@ export default async function DashboardPage() {
                 <th className="py-2 px-2 text-right">MOTM</th>
                 <th className="py-2 px-2 text-right">Result</th>
                 <th className="py-2 px-2 text-right">Conceded</th>
+                <th className="py-2 px-2 text-right">Bonus</th>
                 <th className="py-2 px-2 text-right">Base</th>
                 <th className="py-2 px-2 text-right">Captain</th>
                 <th className="py-2 pl-2 text-right">Final</th>
@@ -179,6 +180,7 @@ export default async function DashboardPage() {
                       motm: number;
                       result: number;
                       goalsConceded: number;
+                      bonus: number;
                     }
                   | undefined;
                 const base = row?.basePoints ?? 0;
@@ -195,6 +197,7 @@ export default async function DashboardPage() {
                     <td className="py-2 px-2 text-right">{b?.motm ?? "—"}</td>
                     <td className="py-2 px-2 text-right">{b?.result ?? "—"}</td>
                     <td className="py-2 px-2 text-right">{b?.goalsConceded ?? "—"}</td>
+                    <td className="py-2 px-2 text-right">{b?.bonus ?? "—"}</td>
                     <td className="py-2 px-2 text-right font-semibold">{base}</td>
                     <td className="py-2 px-2 text-right">{multiplier > 1 ? `×${multiplier}` : "—"}</td>
                     <td className="py-2 pl-2 text-right font-bold">{base * multiplier}</td>

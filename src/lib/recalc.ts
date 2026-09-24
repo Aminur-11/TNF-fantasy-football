@@ -49,6 +49,7 @@ export async function recalculateMatch(matchId: string): Promise<void> {
           goalsConceded: isSideA ? concededA : concededB,
           result: isSideA ? resultA : resultB,
           isCaptain: false, // base points are captain-agnostic; multiplier applied per-manager below
+          bonusPoints: stat.bonusPoints,
         },
         rules,
       );

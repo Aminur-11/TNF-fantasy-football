@@ -14,6 +14,7 @@ const statLineSchema = z.object({
   goals: z.number().int().min(0),
   assists: z.number().int().min(0),
   motm: z.boolean(),
+  bonusPoints: z.number().int().min(-20).max(20),
 });
 
 const saveMatchSchema = z.object({
@@ -115,6 +116,7 @@ export async function saveMatchStatsAction(
             goals: s.goals,
             assists: s.assists,
             motm: s.motm,
+            bonusPoints: s.bonusPoints,
             positionAtTime: positionById.get(s.playerId)!,
           })),
         });

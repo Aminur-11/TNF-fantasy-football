@@ -38,6 +38,9 @@ export interface PlayerScoringInput {
   goalsConceded: number;
   result: MatchResult;
   isCaptain: boolean;
+  // Discretionary points an admin awards (or deducts) by hand — can be
+  // negative. Applied as-is, independent of position.
+  bonusPoints: number;
 }
 
 export interface ScoringBreakdown {
@@ -47,6 +50,7 @@ export interface ScoringBreakdown {
   motm: number;
   goalsConceded: number;
   result: number;
+  bonus: number;
 }
 
 export interface ScoringResult {
@@ -63,11 +67,12 @@ const ZERO_BREAKDOWN: ScoringBreakdown = {
   motm: 0,
   goalsConceded: 0,
   result: 0,
+  bonus: 0,
 };
 
 function sumBreakdown(b: ScoringBreakdown): number {
   return (
-    b.appearance + b.goals + b.assists + b.motm + b.goalsConceded + b.result
+    b.appearance + b.goals + b.assists + b.motm + b.goalsConceded + b.result + b.bonus
   );
 }
 
@@ -98,6 +103,9 @@ export function calculatePlayerPoints(
   if (input.goals < 0 || input.assists < 0 || input.goalsConceded < 0) {
     throw new Error("Goals, assists and goals conceded must be non-negative");
   }
+  if (input.bonusPoints < -20 || input.bonusPoints > 20) {
+    throw new Error("Bonus points must be between -20 and 20");
+  }
 
   const resultPoints =
     input.result === "WIN"
@@ -114,6 +122,7 @@ export function calculatePlayerPoints(
     goalsConceded:
       input.goalsConceded < rule.concededBonusThreshold ? rule.concededBonusPoints : 0,
     result: resultPoints,
+    bonus: input.bonusPoints,
   };
 
   const basePoints = sumBreakdown(breakdown);
