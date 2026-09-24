@@ -1,8 +1,13 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { saveMatchStatsAction, type SaveMatchResult } from "@/app/actions/admin-record-stats";
+import {
+  saveMatchStatsAction,
+  deleteMatchAction,
+  type SaveMatchResult,
+} from "@/app/actions/admin-record-stats";
+import type { ActionResult } from "@/app/actions/auth";
 import { deriveResult } from "@/lib/scoring";
 import {
   Card,
@@ -10,6 +15,7 @@ import {
   TextInput,
   PrimaryButton,
   SecondaryButton,
+  DangerButton,
   ErrorText,
   SuccessText,
   Badge,
@@ -44,6 +50,7 @@ export interface ExistingMatch {
 }
 
 const initialState: SaveMatchResult = {};
+const deleteInitialState: ActionResult = {};
 
 export default function MatchStatsForm({
   gameweekId,
@@ -60,6 +67,8 @@ export default function MatchStatsForm({
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(saveMatchStatsAction, initialState);
+  const [deleteState, dispatchDelete] = useActionState(deleteMatchAction, deleteInitialState);
+  const [isDeleting, startDeleteTransition] = useTransition();
 
   const [teamAName, setTeamAName] = useState(existingMatch?.teamAName ?? "Team A");
   const [teamBName, setTeamBName] = useState(existingMatch?.teamBName ?? "Team B");
@@ -81,6 +90,30 @@ export default function MatchStatsForm({
       router.replace(`/admin/record-stats?gameweek=${gameweekId}&match=${state.matchId}&saved=1`);
     }
   }, [state.success, state.matchId, existingMatch, gameweekId, router]);
+
+  // The deleted match's id is no longer valid, so drop the `match` param —
+  // the page then falls back to whatever match (if any) is left, or "new".
+  useEffect(() => {
+    if (deleteState.success) {
+      router.replace(`/admin/record-stats?gameweek=${gameweekId}`);
+    }
+  }, [deleteState.success, gameweekId, router]);
+
+  function handleDelete() {
+    if (!existingMatch) return;
+    if (
+      !confirm(
+        "Delete this match? This removes all recorded stats and points for it, and cannot be undone.",
+      )
+    ) {
+      return;
+    }
+    const formData = new FormData();
+    formData.set("matchId", existingMatch.id);
+    startDeleteTransition(() => {
+      dispatchDelete(formData);
+    });
+  }
 
   useEffect(() => {
     if (justSaved) {
@@ -186,7 +219,15 @@ export default function MatchStatsForm({
       <input type="hidden" name="statsJson" value={statsJson} />
 
       <Card>
-        <h2 className="mb-3 text-lg font-semibold">Match</h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Match</h2>
+          {existingMatch && !disabled && (
+            <DangerButton type="button" onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? "Deleting…" : "Delete match"}
+            </DangerButton>
+          )}
+        </div>
+        <ErrorText>{deleteState.error}</ErrorText>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Team A" htmlFor="teamAName">
             <TextInput
