@@ -1,16 +1,16 @@
 import Link from "next/link";
 import { requirePageUser } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
-import { getCurrentGameweek } from "@/lib/gameweek";
+import { getLatestScoredGameweek } from "@/lib/gameweek";
 import { Card, Badge, EmptyState } from "@/components/ui";
 
 export default async function LeaguePage() {
   const user = await requirePageUser();
-  const [teams, currentGameweek] = await Promise.all([
+  const [teams, latestGameweek] = await Promise.all([
     prisma.fantasyTeam.findMany({
       include: { manager: { select: { username: true } }, gameweekPoints: true },
     }),
-    getCurrentGameweek(),
+    getLatestScoredGameweek(),
   ]);
 
   if (teams.length === 0) {
@@ -20,8 +20,8 @@ export default async function LeaguePage() {
   const rows = teams.map((t) => {
     const totalPoints = t.gameweekPoints.reduce((sum, gp) => sum + gp.points, 0);
     const bestGwPoints = t.gameweekPoints.reduce((max, gp) => Math.max(max, gp.points), -Infinity);
-    const gwPoints = currentGameweek
-      ? (t.gameweekPoints.find((gp) => gp.gameweekId === currentGameweek.id)?.points ?? 0)
+    const gwPoints = latestGameweek
+      ? (t.gameweekPoints.find((gp) => gp.gameweekId === latestGameweek.id)?.points ?? 0)
       : 0;
     return {
       id: t.id,
@@ -49,10 +49,10 @@ export default async function LeaguePage() {
     <div className="flex flex-col gap-4">
       <div>
         <h1 className="text-2xl font-bold">League Table</h1>
-        {currentGameweek && (
+        {latestGameweek && (
           <p className="text-sm text-muted">
-            Showing Gameweek {currentGameweek.number} points
-            {currentGameweek.status !== "COMPLETE" && " (provisional)"}.
+            Showing Gameweek {latestGameweek.number} points
+            {latestGameweek.status !== "COMPLETE" && " (provisional)"}.
           </p>
         )}
       </div>

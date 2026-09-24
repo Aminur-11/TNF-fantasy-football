@@ -6,6 +6,7 @@ export interface PitchViewPlayer {
   name: string;
   position: Position;
   isCaptain: boolean;
+  points?: number;
 }
 
 export default function PitchView({ players }: { players: PitchViewPlayer[] }) {
@@ -41,6 +42,11 @@ export default function PitchView({ players }: { players: PitchViewPlayer[] }) {
                   <span className="max-w-[72px] truncate rounded bg-pitch-dark/80 px-1.5 py-0.5 text-center text-[10px] font-semibold text-white sm:max-w-[88px] sm:text-xs">
                     {p.name.split(" ").slice(-1)[0]}
                   </span>
+                  {p.points !== undefined && (
+                    <span className="rounded bg-gold px-1.5 py-0.5 text-center text-[10px] font-bold text-pitch-dark sm:text-xs">
+                      {p.points} pts
+                    </span>
+                  )}
                 </div>
               ))}
             {players.filter((p) => p.position === pos).length === 0 && (

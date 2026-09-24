@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { requirePageUser } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
-import { getCurrentGameweek } from "@/lib/gameweek";
+import { getLatestScoredGameweek } from "@/lib/gameweek";
 import { Card, Badge } from "@/components/ui";
 import GameweekHistory from "@/components/GameweekHistory";
 import PitchView from "@/components/PitchView";
@@ -36,16 +36,16 @@ export default async function TeamDetailPage({
   });
   if (!team) notFound();
 
-  const currentGameweek = await getCurrentGameweek();
-  const squad = currentGameweek
+  const latestGameweek = await getLatestScoredGameweek();
+  const squad = latestGameweek
     ? await prisma.fantasyGameweekSquad.findUnique({
-        where: { fantasyTeamId_gameweekId: { fantasyTeamId: team.id, gameweekId: currentGameweek.id } },
+        where: { fantasyTeamId_gameweekId: { fantasyTeamId: team.id, gameweekId: latestGameweek.id } },
         include: { players: { include: { player: true } } },
       })
     : null;
 
-  const gwPointsRow = currentGameweek
-    ? team.gameweekPoints.find((gp) => gp.gameweekId === currentGameweek.id)
+  const gwPointsRow = latestGameweek
+    ? team.gameweekPoints.find((gp) => gp.gameweekId === latestGameweek.id)
     : undefined;
   const breakdown = (gwPointsRow?.breakdown as unknown as PlayerBreakdownEntry[]) ?? [];
   const breakdownByPlayer = new Map(breakdown.map((b) => [b.playerId, b]));
@@ -61,12 +61,14 @@ export default async function TeamDetailPage({
           name: sp.player.name,
           position: sp.positionAtTime,
           isCaptain: sp.isCaptain,
+          points: breakdownByPlayer.get(sp.playerId)?.finalPoints ?? 0,
         }))
       : team.currentPlayers.map((sp) => ({
           id: sp.playerId,
           name: sp.player.name,
           position: sp.player.position,
           isCaptain: sp.isCaptain,
+          points: breakdownByPlayer.get(sp.playerId)?.finalPoints ?? 0,
         }))
   ).sort((a, b) => POSITION_ORDER[a.position] - POSITION_ORDER[b.position]);
 
@@ -85,11 +87,11 @@ export default async function TeamDetailPage({
           <span className="text-sm text-muted">Overall points</span>
           <span className="text-2xl font-bold">{totalPoints}</span>
         </div>
-        {currentGameweek && gwPointsRow && (
+        {latestGameweek && gwPointsRow && (
           <div className="mt-2 flex items-center justify-between border-t border-card-border pt-2">
             <span className="text-sm text-muted">
-              Gameweek {currentGameweek.number}{" "}
-              {currentGameweek.status !== "COMPLETE" && "(provisional)"}
+              Gameweek {latestGameweek.number}{" "}
+              {latestGameweek.status !== "COMPLETE" && "(provisional)"}
             </span>
             <span className="text-xl font-bold">{gwPointsRow.points}</span>
           </div>
@@ -99,34 +101,28 @@ export default async function TeamDetailPage({
       {displayPlayers.length > 0 && <PitchView players={displayPlayers} />}
 
       <Card>
-        <h2 className="mb-3 text-lg font-semibold">Squad</h2>
+        <h2 className="mb-3 text-lg font-semibold">
+          Squad{latestGameweek ? ` — Gameweek ${latestGameweek.number}` : ""}
+        </h2>
         {displayPlayers.length === 0 ? (
           <p className="text-sm text-muted">This team hasn&apos;t been built yet.</p>
         ) : (
           <div className="flex flex-col gap-1.5">
-            {displayPlayers.map((p) => {
-              const pb = breakdownByPlayer.get(p.id);
-              return (
-                <div
-                  key={p.id}
-                  className="flex items-center justify-between rounded-lg border border-card-border px-3 py-2 text-sm"
-                >
+            {displayPlayers.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center justify-between rounded-lg border border-card-border px-3 py-2 text-sm"
+              >
+                <div className="flex items-center gap-2">
                   <span>
                     {p.name}
                     {p.isCaptain && <span className="ml-1 text-gold">(C)</span>}
                   </span>
-                  <div className="flex items-center gap-2">
-                    <Badge tone="muted">{p.position}</Badge>
-                    {pb && (
-                      <span className="text-xs text-muted">
-                        {pb.basePoints}
-                        {pb.multiplier > 1 ? ` × ${pb.multiplier}` : ""} = {pb.finalPoints}
-                      </span>
-                    )}
-                  </div>
+                  <Badge tone="muted">{p.position}</Badge>
                 </div>
-              );
-            })}
+                <span className="font-semibold">{p.points} pts</span>
+              </div>
+            ))}
           </div>
         )}
       </Card>

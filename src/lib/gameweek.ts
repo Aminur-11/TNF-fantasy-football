@@ -27,6 +27,21 @@ export async function getCurrentGameweek(): Promise<Gameweek | null> {
 }
 
 /**
+ * Picks the highest-numbered gameweek that isn't OPEN — i.e. the most
+ * recent one with actual (possibly provisional) scoring to show, skipping
+ * over a currently-OPEN gameweek that has no points yet. Used for "last
+ * gameweek's points/team" views (league table, team detail), as opposed to
+ * `getCurrentGameweek()` which is about what a manager should be building
+ * towards right now.
+ */
+export async function getLatestScoredGameweek(): Promise<Gameweek | null> {
+  return prisma.gameweek.findFirst({
+    where: { status: { in: ["LOCKED", "COMPLETE"] } },
+    orderBy: { number: "desc" },
+  });
+}
+
+/**
  * Whether a manager may currently edit their team/captain/transfers.
  *
  * Blocked only while the most relevant gameweek is actively LOCKED (its
