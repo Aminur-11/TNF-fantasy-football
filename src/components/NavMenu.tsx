@@ -33,6 +33,7 @@ export default function NavMenu({ user }: { user: NavUser | null }) {
         <NavLink href="/dashboard">Dashboard</NavLink>
         <NavLink href="/team">My Team</NavLink>
         <NavLink href="/league">League</NavLink>
+        <NavLink href="/stats">Stats</NavLink>
         {user.role === "ADMIN" && <NavLink href="/admin">Admin</NavLink>}
         <form action={logoutAction}>
           <button
@@ -65,6 +66,9 @@ export default function NavMenu({ user }: { user: NavUser | null }) {
           </MobileLink>
           <MobileLink href="/league" onNavigate={() => setOpen(false)}>
             League
+          </MobileLink>
+          <MobileLink href="/stats" onNavigate={() => setOpen(false)}>
+            Stats
           </MobileLink>
           {user.role === "ADMIN" && (
             <MobileLink href="/admin" onNavigate={() => setOpen(false)}>
