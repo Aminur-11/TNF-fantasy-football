@@ -1,8 +1,9 @@
 import { requirePageUser } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 import { aggregatePlayerStats } from "@/lib/player-stats";
-import { Card, Badge, EmptyState } from "@/components/ui";
+import { Card, EmptyState } from "@/components/ui";
 import type { Position } from "@/lib/scoring";
+import StatsTable from "./StatsTable";
 
 export default async function StatsPage() {
   await requirePageUser();
@@ -37,13 +38,16 @@ export default async function StatsPage() {
   const rows = players
     .map((p) => {
       const t = totals.get(p.id);
+      const goals = t?.goals ?? 0;
+      const assists = t?.assists ?? 0;
       return {
         id: p.id,
         name: p.name,
         position: p.position as Position,
         appearances: t?.appearances ?? 0,
-        goals: t?.goals ?? 0,
-        assists: t?.assists ?? 0,
+        goals,
+        assists,
+        totalGA: goals + assists,
         wins: t?.wins ?? 0,
         goalsConceded: t?.goalsConceded ?? 0,
         motm: t?.motm ?? 0,
@@ -62,35 +66,7 @@ export default async function StatsPage() {
       </div>
 
       <Card className="overflow-x-auto p-0">
-        <table className="w-full min-w-[640px] text-sm">
-          <thead>
-            <tr className="border-b border-card-border text-left text-xs uppercase tracking-wide text-muted">
-              <th className="px-4 py-3">Player</th>
-              <th className="px-4 py-3 text-right">App</th>
-              <th className="px-4 py-3 text-right">Goals</th>
-              <th className="px-4 py-3 text-right">Assists</th>
-              <th className="px-4 py-3 text-right">Wins</th>
-              <th className="px-4 py-3 text-right">Conceded</th>
-              <th className="px-4 py-3 text-right">MOTM</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="border-b border-card-border last:border-0">
-                <td className="px-4 py-3">
-                  <span className="font-medium">{r.name}</span>{" "}
-                  <Badge tone="muted">{r.position}</Badge>
-                </td>
-                <td className="px-4 py-3 text-right">{r.appearances}</td>
-                <td className="px-4 py-3 text-right font-semibold">{r.goals}</td>
-                <td className="px-4 py-3 text-right">{r.assists}</td>
-                <td className="px-4 py-3 text-right">{r.wins}</td>
-                <td className="px-4 py-3 text-right">{r.goalsConceded}</td>
-                <td className="px-4 py-3 text-right">{r.motm}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <StatsTable players={rows} />
       </Card>
     </div>
   );

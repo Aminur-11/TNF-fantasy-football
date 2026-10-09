@@ -120,12 +120,53 @@ test.describe.serial("Stats page", () => {
     await expect(cols(scorerRow).nth(1)).toHaveText(String(scorer.appearances));
     await expect(cols(scorerRow).nth(2)).toHaveText(String(scorer.goals));
     await expect(cols(scorerRow).nth(3)).toHaveText(String(scorer.assists));
-    await expect(cols(scorerRow).nth(4)).toHaveText(String(scorer.wins));
-    await expect(cols(scorerRow).nth(5)).toHaveText(String(scorer.goalsConceded));
-    await expect(cols(scorerRow).nth(6)).toHaveText(String(scorer.motm));
+    await expect(cols(scorerRow).nth(4)).toHaveText(String(scorer.goals + scorer.assists));
+    await expect(cols(scorerRow).nth(5)).toHaveText(String(scorer.wins));
+    await expect(cols(scorerRow).nth(6)).toHaveText(String(scorer.goalsConceded));
+    await expect(cols(scorerRow).nth(7)).toHaveText(String(scorer.motm));
 
     const loserRow = page.locator("tr", { hasText: "E2E Def Two" });
-    await expect(cols(loserRow).nth(4)).toHaveText(String(loser.wins));
-    await expect(cols(loserRow).nth(5)).toHaveText(String(loser.goalsConceded));
+    await expect(cols(loserRow).nth(5)).toHaveText(String(loser.wins));
+    await expect(cols(loserRow).nth(6)).toHaveText(String(loser.goalsConceded));
+  });
+
+  test("column headers sort the table: asc, then desc, then back to default", async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto("/stats");
+
+    const goalsHeader = page.getByRole("columnheader", { name: /Goals/ });
+    const defaultOrder = await page.locator("tbody tr").evaluateAll((rows) =>
+      rows.map((r) => r.querySelector("td")?.textContent?.trim()),
+    );
+
+    // First click: ascending (lowest goals first).
+    await goalsHeader.getByRole("button").click();
+    await expect(goalsHeader).toHaveAttribute("aria-sort", "ascending");
+    await expect(goalsHeader).toContainText("▲");
+    const ascValues = await page.locator("tbody tr").evaluateAll((rows, idx) =>
+      rows.map((r) => Number(r.querySelectorAll("td")[idx as number]?.textContent)),
+      2,
+    );
+    expect(ascValues).toEqual([...ascValues].sort((a, b) => a - b));
+
+    // Second click: descending (highest goals first).
+    await goalsHeader.getByRole("button").click();
+    await expect(goalsHeader).toHaveAttribute("aria-sort", "descending");
+    await expect(goalsHeader).toContainText("▼");
+    const descValues = await page.locator("tbody tr").evaluateAll((rows, idx) =>
+      rows.map((r) => Number(r.querySelectorAll("td")[idx as number]?.textContent)),
+      2,
+    );
+    expect(descValues).toEqual([...descValues].sort((a, b) => b - a));
+
+    // Third click: back to the original (default) order, no arrow shown.
+    await goalsHeader.getByRole("button").click();
+    await expect(goalsHeader).toHaveAttribute("aria-sort", "none");
+    await expect(goalsHeader).not.toContainText("▲");
+    await expect(goalsHeader).not.toContainText("▼");
+    const resetOrder = await page.locator("tbody tr").evaluateAll((rows) =>
+      rows.map((r) => r.querySelector("td")?.textContent?.trim()),
+    );
+    expect(resetOrder).toEqual(defaultOrder);
   });
 });
